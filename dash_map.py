@@ -7,61 +7,45 @@ import numpy as np
 from matplotlib import pyplot as plt
 import dash_bootstrap_components as dbc
 
-df = pd.read_csv('full_clustered_data_real.csv', sep=';', decimal=',')
-df['sqft_living'] = df['sqft_above'] + df['sqft_basement']
-df['basement_binary'] = 0
-df.loc[df['sqft_basement'] > 0, 'basement_binary'] = 1
-
-# --------------------------------
-# Color setup
-# --------------------------------
-tab10 = plt.get_cmap("tab10")
-clusters = ['New Suburban (Family)', 'Established Housing (w/o Basement)', 'Established Housing (with Basement)', 'Luxurious',
-            'Compact Urban Housing', 'Modern/Renovated']
-clusters_palette = {clusters[cluster_id]: tab10(cluster_id) for cluster_id in
-                    range(len(clusters))}
-
-hover_cols = ["id", "price", "age", "renovated", "sqft_living", "sqft_lot", "final_category"]
-
 
 def rgba_tuple_to_str(rgba):
     r, g, b, a = rgba
     return f"rgba({int(r * 255)}, {int(g * 255)}, {int(b * 255)}, {a})"
 
 
+df = pd.read_csv('full_clustered_data_real.csv', sep=';', decimal=',')
+df['sqft_living'] = df['sqft_above'] + df['sqft_basement']
+df['basement_binary'] = 0
+df.loc[df['sqft_basement'] > 0, 'basement_binary'] = 1
+
+tab10 = plt.get_cmap("tab10")
+clusters = ['New Suburban (Family)', 'Established Housing (w/o Basement)', 'Established Housing (with Basement)', 'Luxurious',
+            'Compact Urban Housing', 'Modern/Renovated']
+clusters_palette = {clusters[cluster_id]: tab10(cluster_id) for cluster_id in
+                    range(len(clusters))}
 clusters_palette_plotly = {k: rgba_tuple_to_str(v) for k, v in clusters_palette.items()}
 
-# --------------------------------
-# App setup
-# --------------------------------
-
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
-app.title = "Interactive Map"
-
-# --------------------------------
-# Helper values
-# --------------------------------
+hover_cols = ["id", "price", "age", "renovated", "sqft_living", "sqft_lot", "final_category"]
 log_features = ["price", "sqft_living", "sqft_lot", "sqft_above", "sqft_basement", ]
-
 color_features = [{"label": "Final category", "value": "final_category"}, {"label": "Age", "value": "age"},
                   {"label": "Renovated", "value": "renovated"}, ] + [{"label": f.replace("_", " ").title(), "value": f} for f
                                                                      in log_features]
 
 continuous_color_scales = ["Custom",  # used when final_category is selected
-                           "RdYlGn", "RdYlGn_r", "Viridis", 'delta', 'edge',]
+                           "RdYlGn", "RdYlGn_r", "Viridis", 'delta', 'edge', ]
 
 age_min, age_max = df.age.min(), df.age.max()
 
-# --------------------------------
-# Layout
-# --------------------------------
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
+app.title = "Interactive Map"
+
+# layout
 app.layout = html.Div(
     style={"padding": "6px"},
     children=[
-        # html.H2("Interactive Housing Map"),
         html.Div(style={"display": "flex", "gap": "10px"},
                  children=[
-                     # LEFT SIDEBAR
+                     # left sidebar
                      html.Div(
                          style={"width": "440px", "minWidth": "320px",
                                 "border": "1px solid #e5e5e5",
@@ -89,7 +73,6 @@ app.layout = html.Div(
                                                            value="Custom",
                                                            clearable=False,
                                                            disabled=True,
-                                                           # starts locked because default is final_category
                                                            ), ], ),
                                           html.Div(children=[
                                               html.Label("Categories"),
@@ -99,7 +82,6 @@ app.layout = html.Div(
                                                            value=clusters,
                                                            clearable=False,
                                                            disabled=False,
-                                                           # starts locked because default is final_category
                                                            ), ], ),
                                           html.Div(
                                               style={"display": "flex", "gap": "12px"},
@@ -139,7 +121,7 @@ app.layout = html.Div(
                                       ], ),
                              html.Hr(style={"margin": "14px 0"}),
 
-                             # sliders in a small row
+                             # sliders
                              html.Div(style={"display": "flex", "flexDirection": "column", "gap": "3px"},
                                       children=[
                                           html.Div(
@@ -157,7 +139,6 @@ app.layout = html.Div(
                                                       tooltip={
                                                           "placement": "bottom",
                                                           "always_visible": True},
-                                                      # verticalHeight=250
                                                   ), ],
                                           ),
                                           html.Div(
@@ -172,7 +153,6 @@ app.layout = html.Div(
                                                       value=[2.4, 4.2],
                                                       min=2.4, max=4.2, step=0.01,
                                                       marks=None,
-                                                      # verticalHeight=250,
                                                       tooltip={
                                                           "placement": "bottom",
                                                           "always_visible": True}, ), ],
@@ -189,7 +169,6 @@ app.layout = html.Div(
                                                       value=[2.7, 6.3],
                                                       min=2.7, max=6.3, step=0.01,
                                                       marks=None,
-                                                      # verticalHeight=250,
                                                       tooltip={
                                                           "placement": "bottom",
                                                           "always_visible": True}, ), ],
@@ -210,7 +189,6 @@ app.layout = html.Div(
                                                       step=1,
                                                       vertical=False,
                                                       marks=None,
-                                                      # verticalHeight=250,
                                                       tooltip={
                                                           "placement": "bottom",
                                                           "always_visible": True},
@@ -230,9 +208,7 @@ app.layout = html.Div(
     ], )
 
 
-# --------------------------------
-# Lock/unlock palette dropdown + show "Custom"
-# --------------------------------
+# coloring callback
 @app.callback(Output("color-scale", "disabled"),
               Output("color-scale", "value"),
               Input("color-feature", "value"),
@@ -248,9 +224,7 @@ def lock_palette_dropdown(color_feature, current_scale):
     return False, current_scale
 
 
-# --------------------------------
-# Map callback
-# --------------------------------
+# map callback
 @app.callback(Output("map", "figure"),
               Input("color-feature", "value"),
               Input("color-scale", "value"),
@@ -288,7 +262,7 @@ def update_map(color_feature, color_scale, price_range_log, sqft_living_range_lo
         if color_feature in log_features:
             log_col = f"{color_feature}__log10"
             dff[log_col] = np.log10(dff[color_feature].clip(lower=1))
-            dff[log_col] = dff[log_col].clip(dff[log_col].min()*1.05, dff[log_col]*0.98)
+            dff[log_col] = dff[log_col].clip(dff[log_col].min() * 1.05, dff[log_col] * 0.98)
             color_col = log_col
             color_title = f"log10({color_feature})"
         else:
@@ -302,7 +276,6 @@ def update_map(color_feature, color_scale, price_range_log, sqft_living_range_lo
                              map_style="open-street-map", custom_data=hover_cols,
                              color_continuous_scale=None if is_categorical else color_scale, )
 
-        # nicer title for log-color
         if not is_categorical:
             fig.update_coloraxes(colorbar_title=color_title)
 
@@ -322,8 +295,5 @@ def update_map(color_feature, color_scale, price_range_log, sqft_living_range_lo
     return fig
 
 
-# --------------------------------
-# Run
-# --------------------------------
 if __name__ == "__main__":
     app.run(debug=False)

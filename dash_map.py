@@ -27,9 +27,12 @@ clusters_palette_plotly = {k: rgba_tuple_to_str(v) for k, v in clusters_palette.
 
 hover_cols = ["id", "price", "age", "renovated", "sqft_living", "sqft_lot", "final_category"]
 log_features = ["price", "sqft_living", "sqft_lot", "sqft_above", "sqft_basement", ]
-color_features = [{"label": "Final category", "value": "final_category"}, {"label": "Age", "value": "age"},
-                  {"label": "Renovated", "value": "renovated"}, ] + [{"label": f.replace("_", " ").title(), "value": f} for f
-                                                                     in log_features]
+color_features = ([{"label": "Final category", "value": "final_category"}, {"label": "Age", "value": "age"},
+                  {"label": "Renovated", "value": "renovated"}, {"label": "Bedrooms", "value": "bedrooms"},
+                    {"label": "Floors", "value": "floors"}, {"label": "Condition", "value": "condition"},
+                   ] +
+                  [{"label": f.replace("_", " ").title(), "value": f} for f
+                                                                     in log_features])
 
 continuous_color_scales = ["Custom",  # used when final_category is selected
                            "RdYlGn", "RdYlGn_r", "Viridis", 'delta', 'edge', ]
@@ -93,8 +96,8 @@ app.layout = html.Div(
                                                           dcc.Checklist(
                                                               id="renovated-filter",
                                                               options=[
-                                                                  {"label": "Not renovated", "value": 0},
-                                                                  {"label": "Renovated", "value": 1},
+                                                                  {"label": "Yes", "value": 1},
+                                                                  {"label": "No", "value": 0},
                                                               ],
                                                               value=[0, 1],
                                                               inline=False,
@@ -108,8 +111,23 @@ app.layout = html.Div(
                                                           dcc.Checklist(
                                                               id="basement-filter",
                                                               options=[
-                                                                  {"label": "Without Basement", "value": 0},
-                                                                  {"label": "With Basement", "value": 1},
+                                                                  {"label": "Yes", "value": 1},
+                                                                  {"label": "No", "value": 0},
+                                                              ],
+                                                              value=[0, 1],
+                                                              inline=False,
+                                                          ),
+                                                      ],
+                                                  ),
+                                                  html.Div(
+                                                      style={"flex": "1", "minWidth": 0},
+                                                      children=[
+                                                          html.Label("Waterfront"),
+                                                          dcc.Checklist(
+                                                              id="waterfront-filter",
+                                                              options=[
+                                                                  {"label": "Yes", "value": 1},
+                                                                  {"label": "No", "value": 0},
                                                               ],
                                                               value=[0, 1],
                                                               inline=False,
@@ -234,11 +252,12 @@ def lock_palette_dropdown(color_feature, current_scale):
               Input("age-slider", "value"),
               Input("renovated-filter", "value"),
               Input("basement-filter", "value"),
+              Input("waterfront-filter", "value"),
               Input("category-dropdown", "value"),
               )
 def update_map(color_feature, color_scale, price_range_log, sqft_living_range_log, sqft_lot_range_log, age_range,
-               renovated_values, basement_filter,
-               catetegories):
+               renovated_values, basement_filter, waterfront_filter,
+               categories):
     price_range = [10 ** price_range_log[0], 10 ** price_range_log[1]]
     sqft_living_range = [10 ** sqft_living_range_log[0], 10 ** sqft_living_range_log[1]]
     sqft_lot_range = [10 ** sqft_lot_range_log[0], 10 ** sqft_lot_range_log[1]]
@@ -247,7 +266,8 @@ def update_map(color_feature, color_scale, price_range_log, sqft_living_range_lo
             df.sqft_living <= sqft_living_range[1]) & (df.sqft_lot >= sqft_lot_range[0]) & (
                      df.sqft_lot <= sqft_lot_range[1]) & (df.age >= age_range[0]) & (df.age <= age_range[1]) & (
                  df.renovated.isin(renovated_values)) & (df['basement_binary'].isin(basement_filter)) & (
-                 df['final_category'].isin(catetegories))].copy()
+            df['waterfront'].isin(waterfront_filter)) & (
+                 df['final_category'].isin(categories))].copy()
 
     # decide coloring behavior
     if color_feature == "final_category":
